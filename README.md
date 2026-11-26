@@ -15,14 +15,12 @@ proof, an independent numerical check, and a machine-checked proof in
 |---|---|---|---|
 | [A182132](https://oeis.org/A182132) | If 30n−7, 90n−23 and 300n−79 are all prime, their product is a Carmichael number. | ✅ | ✅ full |
 | [A182088](https://oeis.org/A182088) | If 30n−29, 60n−59, 90n−89 and 180n−179 are all prime, their product is a Carmichael number. | ✅ | ✅ full |
-| [A182207](https://oeis.org/A182207) | Every Carmichael number divisible by primes p and 2p−1 has the form p(2p−1)(n(2p−2)+p) with n ≥ 1. | ✅ | ✅ modulo Korselt¹ |
+| [A182207](https://oeis.org/A182207) | Every Carmichael number divisible by primes p and 2p−1 has the form p(2p−1)(n(2p−2)+p) with n ≥ 1. | ✅ | ✅ full |
 
 As of November 2026 all three were still recorded in the OEIS as conjectures, checked only
 for small parameters. Sibling entries by the same author (A182085, A182133, A182416) had
 already been annotated "follows from Korselt's criterion"; these three had not. A web search
 found no prior written proof.
-
-¹ See [Scope of the formal verification](#scope-of-the-formal-verification).
 
 ### Proof sketches
 
@@ -56,22 +54,23 @@ theorem A182088 (n : ℕ) (hn : 1 ≤ n) (hp : (30 * n - 29).Prime) (hq : (60 * 
     (hr : (90 * n - 89).Prime) (hs : (180 * n - 179).Prime) :
     IsCarmichael ((30 * n - 29) * (60 * n - 59) * (90 * n - 89) * (180 * n - 179))
 
-def IsKorselt (C : ℕ) : Prop :=
-  Squarefree C ∧ ∀ q : ℕ, q.Prime → q ∣ C → q - 1 ∣ C - 1
-
-theorem A182207 {C p : ℕ} (hK : IsKorselt C) (hp : p.Prime) (hq : (2 * p - 1).Prime)
+theorem A182207 {C p : ℕ} (hC : IsCarmichael C) (hp : p.Prime) (hq : (2 * p - 1).Prime)
     (hpC : p ∣ C) (hqC : 2 * p - 1 ∣ C) :
     ∃ n : ℕ, 1 ≤ n ∧ C = p * (2 * p - 1) * (n * (2 * p - 2) + p)
 ```
 
 ### Scope of the formal verification
 
-- **A182132, A182088:** proved against the definition of a Carmichael number itself.
-  The sufficiency direction of Korselt's criterion (via Fermat's little theorem and the
-  Chinese remainder theorem) is proved within the file.
-- **A182207:** the theorem is stated for Korselt numbers. Passing from "Carmichael" to
-  "Korselt" is the classical necessity direction of Korselt's criterion, which is used but
-  not formalised here. Formalising it is listed under [Future work](#future-work).
+All three theorems are stated against the definition of a Carmichael number itself
+(`IsCarmichael` above), not against Korselt's criterion. Both directions of Korselt's
+criterion that the proofs need are proved in the file from Mathlib primitives:
+
+- **Sufficiency** (used for A182132, A182088): `carmichael_of_three`, `carmichael_of_four`,
+  via Fermat's little theorem and the Chinese remainder theorem.
+- **Necessity** (used for A182207): `IsCarmichael.isKorselt`. Squarefreeness via
+  (1 + C/p)^(C−1) ≡ 1 + (C−1)·C/p (mod C); the condition p − 1 | C − 1 via a primitive
+  root mod p lifted by the Chinese remainder theorem.
+
 - `lean/Check.lean` runs `#print axioms`; every theorem depends only on Lean's standard
   axioms `propext`, `Classical.choice` and `Quot.sound`. No `sorry`. CI fails if this
   changes.
@@ -120,7 +119,6 @@ scripts/extract.py                OEIS conjecture extraction
 
 ## Future work
 
-- Formalise the necessity direction of Korselt's criterion, making A182207 fully formal.
 - Submit the proofs to the OEIS entries.
 - Extend to further OEIS and literature conjectures.
 

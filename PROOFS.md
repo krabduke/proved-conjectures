@@ -4,7 +4,8 @@ All three rely on **Korselt's criterion**: a composite N is a Carmichael number 
 squarefree and (q − 1) | (N − 1) for every prime q | N.
 
 Status at time of writing (Nov 2026): all three entries still say "Conjecture", with no proof
-recorded in OEIS. Numerical checks: `scripts/check_carmichael.py`.
+recorded in OEIS. Numerical checks: `scripts/check_carmichael.py`. Machine-checked proofs:
+`lean/ProvedConjectures/Carmichael.lean` (including both directions of Korselt's criterion).
 
 ---
 

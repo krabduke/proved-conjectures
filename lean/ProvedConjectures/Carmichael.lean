@@ -141,9 +141,9 @@ Carmichael numbers. -/
 def IsKorselt (C : ℕ) : Prop :=
   Squarefree C ∧ ∀ q : ℕ, q.Prime → q ∣ C → q - 1 ∣ C - 1
 
-/-- **OEIS A182207** (conjecture of M. Coman, 2012): any Korselt number `C` divisible by
+/-- Core of **A182207**, for Korselt numbers: any Korselt number `C` divisible by
 primes `p` and `2p-1` has the form `C = p(2p-1)(n(2p-2)+p)` with `n ≥ 1`. -/
-theorem A182207 {C p : ℕ} (hK : IsKorselt C) (hp : p.Prime) (hq : (2 * p - 1).Prime)
+theorem A182207_of_korselt {C p : ℕ} (hK : IsKorselt C) (hp : p.Prime) (hq : (2 * p - 1).Prime)
     (hpC : p ∣ C) (hqC : 2 * p - 1 ∣ C) :
     ∃ n : ℕ, 1 ≤ n ∧ C = p * (2 * p - 1) * (n * (2 * p - 2) + p) := by
   obtain ⟨hsf, hkor⟩ := hK
@@ -208,5 +208,102 @@ theorem A182207 {C p : ℕ} (hK : IsKorselt C) (hp : p.Prime) (hq : (2 * p - 1).
     push_cast; rw [Int.toNat_of_nonneg hc0]; linarith
   have : m = c.toNat * (4 * j) + (2 * j + 1) := by exact_mod_cast h3.symm
   rw [this]
+
+/-! ### Korselt's criterion, necessity direction -/
+
+/-- If `C ∣ x * x` then `(1 + x)^N ≡ 1 + N x (mod C)`. -/
+lemma one_add_pow_modEq {x C : ℕ} (h : C ∣ x * x) (N : ℕ) :
+    (1 + x) ^ N ≡ 1 + N * x [MOD C] := by
+  induction N with
+  | zero => simp [Nat.ModEq.refl]
+  | succ N ih =>
+    rw [pow_succ]
+    refine (ih.mul_right (1 + x)).trans ?_
+    have e : (1 + N * x) * (1 + x) = 1 + (N + 1) * x + N * (x * x) := by ring
+    rw [e]
+    have h0 : N * (x * x) ≡ 0 [MOD C] := Nat.modEq_zero_iff_dvd.2 (dvd_mul_of_dvd_right h N)
+    simpa using (Nat.ModEq.refl (1 + (N + 1) * x)).add h0
+
+/-- Carmichael numbers are squarefree. -/
+theorem IsCarmichael.squarefree {C : ℕ} (h : IsCarmichael C) : Squarefree C := by
+  obtain ⟨h1, -, hc⟩ := h
+  rw [Nat.squarefree_iff_prime_squarefree]
+  rintro p hp ⟨y, hy⟩
+  -- C = p * x with x = p * y
+  set x := p * y with hxdef
+  have hC : C = p * x := by rw [hy, hxdef]; ring
+  have hpx : p ∣ x := ⟨y, rfl⟩
+  have hx0 : 0 < x := by
+    rcases Nat.eq_zero_or_pos x with h0 | h0
+    · rw [hC, h0] at h1; simp at h1
+    · exact h0
+  have hcop : (1 + x).Coprime C := by
+    apply Nat.coprime_of_dvd
+    intro q hq hq1 hqC
+    have hqx : q ∣ x := by
+      rw [hC] at hqC
+      rcases (Nat.Prime.dvd_mul hq).1 hqC with hqp | hqx
+      · rw [(Nat.prime_dvd_prime_iff_eq hq hp).1 hqp]; exact hpx
+      · exact hqx
+    have : q ∣ 1 := (Nat.dvd_add_right hqx).1 (by rwa [add_comm] at hq1)
+    exact hq.one_lt.ne' (Nat.dvd_one.1 this)
+  have hxx : C ∣ x * x := ⟨y, by rw [hC, hxdef]; ring⟩
+  have key := (one_add_pow_modEq hxx (C - 1)).symm.trans (hc (1 + x) hcop)
+  -- 1 + (C-1) x ≡ 1 (mod C)  ⇒  C ∣ (C-1) x  ⇒  p ∣ C - 1
+  have hd : C ∣ (C - 1) * x := by
+    have := (Nat.modEq_iff_dvd' (by omega)).1 key.symm
+    simpa using this
+  have hp1 : p ∣ C - 1 := by
+    have : p * x ∣ (C - 1) * x := by rw [← hC]; exact hd
+    exact Nat.dvd_of_mul_dvd_mul_right hx0 this
+  have hpC : p ∣ C := ⟨x, hC⟩
+  have : p ∣ C - (C - 1) := Nat.dvd_sub hpC hp1
+  rw [show C - (C - 1) = 1 by omega] at this
+  exact hp.one_lt.ne' (Nat.dvd_one.1 this)
+
+/-- Carmichael numbers satisfy Korselt's divisibility condition. -/
+theorem IsCarmichael.sub_one_dvd {C p : ℕ} (h : IsCarmichael C) (hp : p.Prime)
+    (hpC : p ∣ C) : p - 1 ∣ C - 1 := by
+  have hsf := h.squarefree
+  obtain ⟨m, rfl⟩ := hpC
+  have hpm : p.Coprime m := (Nat.squarefree_mul_iff.1 hsf).1
+  have := Fact.mk hp
+  obtain ⟨g, hg⟩ := IsCyclic.exists_ofOrder_eq_natCard (α := (ZMod p)ˣ)
+  have hcard : Nat.card (ZMod p)ˣ = p - 1 := by
+    rw [Nat.card_eq_fintype_card, ZMod.card_units_eq_totient, Nat.totient_prime hp]
+  obtain ⟨a, ha1, ha2⟩ := Nat.chineseRemainder hpm (g : ZMod p).val 1
+  have hag : (a : ZMod p) = (g : ZMod p) := by
+    rw [← ZMod.natCast_zmod_val (g : ZMod p)]
+    exact (ZMod.natCast_eq_natCast_iff _ _ _).2 ha1
+  have hap : a.Coprime p := by
+    rw [Nat.coprime_comm, Nat.Prime.coprime_iff_not_dvd hp]
+    intro hdvd
+    have : (a : ZMod p) = 0 := (ZMod.natCast_eq_zero_iff a p).2 hdvd
+    rw [hag] at this
+    exact g.ne_zero this
+  have ham : a.Coprime m := by
+    unfold Nat.Coprime
+    rw [ha2.gcd_eq]
+    simp
+  have hpow := h.2.2 a (Nat.Coprime.mul_right hap ham)
+  have hpow' : a ^ (p * m - 1) ≡ 1 [MOD p] := Nat.ModEq.of_mul_right m hpow
+  have hz : ((a ^ (p * m - 1) : ℕ) : ZMod p) = 1 := by
+    rw [(ZMod.natCast_eq_natCast_iff _ _ _).2 hpow']; simp
+  push_cast at hz
+  rw [hag] at hz
+  have hgu : g ^ (p * m - 1) = 1 := Units.ext (by simpa using hz)
+  have := orderOf_dvd_of_pow_eq_one hgu
+  rwa [hg, hcard] at this
+
+/-- Korselt's criterion, necessity direction: every Carmichael number is a Korselt number. -/
+theorem IsCarmichael.isKorselt {C : ℕ} (h : IsCarmichael C) : IsKorselt C :=
+  ⟨h.squarefree, fun _ hq hqC => h.sub_one_dvd hq hqC⟩
+
+/-- **OEIS A182207** (conjecture of M. Coman, 2012): every Carmichael number `C`
+divisible by primes `p` and `2p-1` has the form `C = p(2p-1)(n(2p-2)+p)` with `n ≥ 1`. -/
+theorem A182207 {C p : ℕ} (hC : IsCarmichael C) (hp : p.Prime) (hq : (2 * p - 1).Prime)
+    (hpC : p ∣ C) (hqC : 2 * p - 1 ∣ C) :
+    ∃ n : ℕ, 1 ≤ n ∧ C = p * (2 * p - 1) * (n * (2 * p - 2) + p) :=
+  A182207_of_korselt hC.isKorselt hp hq hpC hqC
 
 end ProvedConjectures.Carmichael

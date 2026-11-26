@@ -5,3 +5,4 @@ import ProvedConjectures
 #print axioms ProvedConjectures.Carmichael.A182132
 #print axioms ProvedConjectures.Carmichael.A182088
 #print axioms ProvedConjectures.Carmichael.A182207
+#print axioms ProvedConjectures.Carmichael.IsCarmichael.isKorselt

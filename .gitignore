@@ -3,3 +3,4 @@ lean/.lake/
 __pycache__/
 .DS_Store
 axioms.txt
+OEIS_SUBMISSIONS.md
