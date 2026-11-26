@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lean:
+    name: Lean proofs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: lean
+      - name: Check axioms (fails on sorry or extra axioms)
+        working-directory: lean
+        run: |
+          lake env lean Check.lean | tee axioms.txt
+          if grep -qE "sorryAx|Lean.ofReduceBool" axioms.txt; then
+            echo "Unexpected axiom found" && exit 1
+          fi
+
+  numerics:
+    name: Numerical checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check_carmichael.py
